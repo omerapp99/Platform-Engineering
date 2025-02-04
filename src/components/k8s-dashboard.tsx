@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
+
 interface PodInfo {
   name: string;
   status: string;
@@ -67,12 +68,20 @@ const K8sDashboard = () => {
   const [endpoint, setEndpoint] = useState('');
   const [error, setError] = useState('');
   const [namespaces, setNamespaces] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Add error timeout function
   const setErrorWithTimeout = (message: string) => {
     setError(message);
     setTimeout(() => {
       setError('');
+    }, 5000);
+  };
+  
+  const setEndPointWithTimeout = (message: string) => {
+    setEndpoint(message);
+    setTimeout(() => {
+      setEndpoint('');
     }, 5000);
   };
 
@@ -89,6 +98,7 @@ const K8sDashboard = () => {
 
   const handleNamespaceSelect = (namespace: string) => {
     setFormData(prev => ({ ...prev, namespace }));
+    setPodDescription('');
     fetchPods();
   };
 
@@ -107,7 +117,7 @@ const K8sDashboard = () => {
       const response = await fetch(`/api/pods/${formData.namespace}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
-      
+      fetchNamespaces();
       setPods(data);
     } catch (err) {
       setErrorWithTimeout((err as Error).message || 'Failed to fetch pods');
@@ -121,14 +131,15 @@ const K8sDashboard = () => {
 
   const handleCreate = async () => {
     try {
-      const response = await fetch('/api/deployments', {
+      const response = await fetch('/api/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
-      setEndpoint(data.endpoint);
+      fetchNamespaces();
+      setEndPointWithTimeout(data.endpoint);
       fetchPods();
     } catch (err) {
       setErrorWithTimeout((err as Error).message || 'Failed to create deployment');
@@ -136,17 +147,28 @@ const K8sDashboard = () => {
   };
 
   const handleDelete = async () => {
+    setIsDeleting(true); // Start loading
     try {
-      const response = await fetch(`/api/namespaces/${formData.namespace}`, {
+      const response = await fetch(`/api/delete`, {
         method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ namespace: formData.namespace }),
       });
+  
       if (!response.ok) throw new Error('Failed to delete namespace');
-      fetchNamespaces();
+      setPodDescription('');
       setPods([]);
+
     } catch (err) {
       setErrorWithTimeout((err as Error).message || 'Failed to delete namespace');
+    } finally {
+      fetchNamespaces();
+      setIsDeleting(false); // Stop loading
     }
   };
+  
 
   const describePod = async (podName: string) => {
     setError('');
@@ -163,14 +185,18 @@ const K8sDashboard = () => {
   };
   
   const deletePod = async (podName: string) => {
+    setIsDeleting(true); // Start loading
     try {
-      const response = await fetch(`/api/pods/${podName}?namespace=${formData.namespace}`, {
+      const response = await fetch(`/api/pods/${formData.namespace}/${podName}/delete`, {
         method: 'DELETE',
       });
       if (!response.ok) throw new Error('Failed to delete pod');
+      setPodDescription('');
       fetchPods();
     } catch (err) {
       setErrorWithTimeout((err as Error).message || 'Failed to delete pod');
+    } finally {
+      setIsDeleting(false); // Stop loading
     }
   };
 
@@ -275,9 +301,10 @@ const K8sDashboard = () => {
                       <Button 
                         variant="destructive" 
                         onClick={handleDelete}
-                        className="bg-red-600 hover:bg-red-700"
+                        disabled={isDeleting}
+                        className={`bg-red-600 hover:bg-red-700 ${isDeleting ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
-                        Delete Namespace
+                        {isDeleting ? 'Deleting...' : 'Delete Namespace'}
                       </Button>
                       <Button 
                         variant="outline" 
