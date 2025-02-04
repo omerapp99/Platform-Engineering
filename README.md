@@ -40,3 +40,6 @@ The k8s-dashboard is a web-based Kubernetes user interface. It allows developers
 3. **Pods**: View the list of pods in the selected namespace. You can describe or delete individual pods using the actions provided.
 4. **Metrics**: Monitor the total number of pods, running pods, namespaces, and deployment rate from the metrics section.
 5. **Refresh**: Use the "Refresh" button to update the list of pods and namespaces.
+
+
+![image](https://github.com/user-attachments/assets/043a35f0-ae3e-4dad-ab7d-851d074212e0)
